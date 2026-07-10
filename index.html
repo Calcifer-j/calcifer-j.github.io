@@ -68,4 +68,58 @@
       margin: 0;
     }
     li {
-      border-top: 1px
+      border-top: 1px solid #eee;
+      padding: 20px 0;
+    }
+    li:last-child {
+      border-bottom: 1px solid #eee;
+    }
+    a.link-title {
+      color: #111;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.15rem;
+      display: block;
+      margin-bottom: 4px;
+    }
+    a.link-title:hover {
+      color: #a8195a;
+    }
+    .link-desc {
+      color: #666;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <svg class="shapes" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="180,20 380,10 300,140" fill="#f4c9dd" opacity="0.8"/>
+      <polygon points="120,120 260,90 220,260 90,220" fill="#e0559a" opacity="0.9"/>
+      <polygon points="200,160 320,180 240,340 150,300" fill="#a8195a"/>
+    </svg>
+    <h1>Your Name</h1>
+    <p class="intro">A short line about who you are and what this page is for.</p>
+  </div>
+
+  <div class="content">
+    <h2>Tools &amp; resources</h2>
+    <ul>
+      <li>
+        <a class="link-title" href="#">Project one</a>
+        <div class="link-desc">Short description of what it is and why it's useful.</div>
+      </li>
+      <li>
+        <a class="link-title" href="#">Project two</a>
+        <div class="link-desc">Short description of what it is and why it's useful.</div>
+      </li>
+      <li>
+        <a class="link-title" href="#">Project three</a>
+        <div class="link-desc">Short description of what it is and why it's useful.</div>
+      </li>
+    </ul>
+  </div>
+
+</body>
+</html>

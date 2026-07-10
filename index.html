@@ -5,57 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Your Name</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       font-family: -apple-system, "Segoe UI", Arial, sans-serif;
-      max-width: 640px;
-      margin: 80px auto;
-      padding: 0 24px;
-      line-height: 1.6;
+      margin: 0;
+      padding: 0;
       color: #1a1a1a;
+      background: #ffffff;
+      overflow-x: hidden;
+    }
+    .hero {
+      position: relative;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 100px 24px 60px;
+    }
+    .shapes {
+      position: absolute;
+      top: 0;
+      right: -60px;
+      width: 420px;
+      height: 420px;
+      z-index: 0;
+      opacity: 0.9;
     }
     h1 {
-      font-size: 2rem;
-      margin-bottom: 0.2em;
+      position: relative;
+      z-index: 1;
+      font-size: 4rem;
+      line-height: 1.05;
+      font-weight: 800;
+      margin: 0 0 24px;
+      color: #111;
     }
     p.intro {
+      position: relative;
+      z-index: 1;
+      font-size: 1.15rem;
       color: #444;
-      margin-bottom: 2.5em;
+      max-width: 480px;
+      margin-bottom: 0;
+    }
+    .content {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 24px 100px;
     }
     h2 {
-      font-size: 1.1rem;
+      font-size: 0.85rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #888;
-      margin-top: 2em;
+      letter-spacing: 0.08em;
+      color: #a8195a;
+      font-weight: 700;
+      margin-top: 3em;
+      margin-bottom: 1em;
     }
     ul {
       list-style: none;
       padding: 0;
+      margin: 0;
     }
     li {
-      margin-bottom: 0.8em;
-    }
-    a {
-      color: #0056d6;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>Your Name</h1>
-  <p class="intro">A short line about who you are and what this page is for.</p>
-
-  <h2>Tools & resources</h2>
-  <ul>
-    <li><a href="#">Project one — short description</a></li>
-    <li><a href="#">Project two — short description</a></li>
-    <li><a href="#">Project three — short description</a></li>
-  </ul>
-
-</body>
-</html>
+      border-top: 1px

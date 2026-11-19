@@ -1,0 +1,31 @@
+name: UCD Sessions Wednesday Check
+
+on:
+  schedule:
+    # Every Wednesday at 9am UK time (UTC during winter, BST in summer)
+    # Using 9am UTC - adjust if needed
+    - cron: '0 9 * * 3'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  check-sessions:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: pip install -r ucd-sessions-bot/requirements.txt
+      
+      - name: Run bot
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python ucd-sessions-bot/bot.py

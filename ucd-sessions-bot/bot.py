@@ -25,7 +25,7 @@ def linear_query(query: str, variables: dict = None):
     response = requests.post(
         LINEAR_API,
         headers={
-            "Authorization": f"Bearer {LINEAR_API_KEY}",
+            "Authorization": LINEAR_API_KEY,
             "Content-Type": "application/json",
         },
         json=payload,

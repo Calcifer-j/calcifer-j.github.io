@@ -58,7 +58,8 @@ def post_to_slack(message: str):
 def get_next_monday(weeks_ahead: int = 0) -> str:
     """Get the date of the next Monday (from today, typically Wednesday)."""
     today = datetime.now()
-    days_until_monday = (7 - today.weekday()) % 7
+    # Monday is weekday 0
+    days_until_monday = (0 - today.weekday()) % 7
     if days_until_monday == 0:
         days_until_monday = 7  # If today is Monday, get next Monday
     next_monday = today + timedelta(days=days_until_monday + (weeks_ahead * 7))

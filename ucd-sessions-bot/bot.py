@@ -1,7 +1,11 @@
 import os
+import sys
 import requests
 from datetime import datetime, timedelta
 from config import LINEAR_TEAM_ID, LINEAR_PROJECT_ID, LINEAR_VIEW_URL
+
+# Force unbuffered output
+sys.stdout.reconfigure(line_buffering=True)
 
 LINEAR_API_KEY = os.environ["LINEAR_API_KEY"]
 SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
@@ -14,21 +18,30 @@ BOT_MANAGED_STATUSES = ["Backlog", "Todo", "In Progress"]
 
 def linear_query(query: str, variables: dict = None):
     """Execute a GraphQL query against Linear API."""
+    payload = {"query": query}
+    if variables:
+        payload["variables"] = variables
+    
     response = requests.post(
         LINEAR_API,
         headers={
             "Authorization": f"Bearer {LINEAR_API_KEY}",
             "Content-Type": "application/json",
         },
-        json={"query": query, "variables": variables or {}},
+        json=payload,
     )
+    
+    print(f"Linear API response status: {response.status_code}")
+    
     if not response.ok:
-        print(f"Linear API error: {response.status_code}", flush=True)
-        print(f"Response: {response.text}", flush=True)
+        print(f"Linear API error response: {response.text}")
         response.raise_for_status()
+    
     data = response.json()
     if "errors" in data:
-        print(f"GraphQL errors: {data['errors']}", flush=True)
+        print(f"GraphQL errors: {data['errors']}")
+        raise Exception(f"GraphQL error: {data['errors']}")
+    
     return data
 
 
@@ -59,125 +72,67 @@ def format_date_nice(date_str: str) -> str:
 
 
 def get_future_sessions():
-    """Get all future session issues."""
+    """Get all future session issues from the project."""
     today = datetime.now().strftime("%Y-%m-%d")
+    
+    # Use project.issues which is more reliable
     query = """
-    query($teamId: ID!, $projectId: ID!, $today: TimelessDate!) {
-      issues(
-        filter: {
-          team: { id: { eq: $teamId } }
-          project: { id: { eq: $projectId } }
-          dueDate: { gte: $today }
-        }
-        orderBy: dueDate
-      ) {
-        nodes {
-          id
-          identifier
-          title
-          url
-          dueDate
-          assignee {
-            name
-            displayName
-          }
-          state {
-            name
-            type
-          }
-          labels {
-            nodes {
+    query GetProjectIssues($projectId: String!) {
+      project(id: $projectId) {
+        issues {
+          nodes {
+            id
+            identifier
+            title
+            url
+            dueDate
+            assignee {
               name
+              displayName
+            }
+            state {
+              name
+              type
+            }
+            labels {
+              nodes {
+                name
+              }
             }
           }
         }
       }
     }
     """
-    result = linear_query(query, {
-        "teamId": LINEAR_TEAM_ID,
-        "projectId": LINEAR_PROJECT_ID,
-        "today": today,
-    })
-    return result.get("data", {}).get("issues", {}).get("nodes", [])
+    
+    result = linear_query(query, {"projectId": LINEAR_PROJECT_ID})
+    all_issues = result.get("data", {}).get("project", {}).get("issues", {}).get("nodes", [])
+    
+    # Filter to future issues only
+    future_issues = [
+        issue for issue in all_issues
+        if issue.get("dueDate") and issue["dueDate"] >= today
+    ]
+    
+    # Sort by due date
+    future_issues.sort(key=lambda x: x.get("dueDate", ""))
+    
+    return future_issues
 
 
 def find_session_by_date(due_date: str):
     """Find a session issue by its due date."""
-    query = """
-    query($teamId: ID!, $projectId: ID!, $dueDate: TimelessDate!) {
-      issues(
-        filter: {
-          team: { id: { eq: $teamId } }
-          project: { id: { eq: $projectId } }
-          dueDate: { eq: $dueDate }
-        }
-      ) {
-        nodes {
-          id
-          identifier
-          title
-          url
-          dueDate
-          assignee {
-            name
-            displayName
-          }
-          state {
-            name
-            type
-          }
-          labels {
-            nodes {
-              name
-            }
-          }
-        }
-      }
-    }
-    """
-    result = linear_query(query, {
-        "teamId": LINEAR_TEAM_ID,
-        "projectId": LINEAR_PROJECT_ID,
-        "dueDate": due_date,
-    })
-    issues = result.get("data", {}).get("issues", {}).get("nodes", [])
-    return issues[0] if issues else None
-
-
-def create_session(due_date: str, status: str = "Backlog"):
-    """Create a new session issue."""
-    nice_date = format_date_nice(due_date)
-    query = """
-    mutation($input: IssueCreateInput!) {
-      issueCreate(input: $input) {
-        success
-        issue {
-          id
-          identifier
-          title
-          url
-        }
-      }
-    }
-    """
-    result = linear_query(query, {
-        "input": {
-            "teamId": LINEAR_TEAM_ID,
-            "projectId": LINEAR_PROJECT_ID,
-            "title": f"UCD Session: {nice_date} - volunteer needed",
-            "dueDate": due_date,
-            "stateId": get_status_id(status),
-            "description": f"## UCD Playback Session\n\n**Date:** Monday {nice_date}\n\n**Presenter:** _Volunteer needed!_\n\n**Theme:** TBC\n\n**Topic:** TBC\n\n---\n\n**To volunteer:** Assign yourself to this issue, pick a theme label, and update the title with your topic.",
-        }
-    })
-    return result.get("data", {}).get("issueCreate", {}).get("issue")
+    sessions = get_future_sessions()
+    for session in sessions:
+        if session.get("dueDate") == due_date:
+            return session
+    return None
 
 
 def get_status_id(status_name: str) -> str:
     """Get the status ID for a given status name."""
     query = """
-    query($teamId: ID!) {
+    query GetTeamStates($teamId: String!) {
       team(id: $teamId) {
         states {
           nodes {
@@ -196,6 +151,40 @@ def get_status_id(status_name: str) -> str:
     return None
 
 
+def create_session(due_date: str, status: str = "Backlog"):
+    """Create a new session issue."""
+    nice_date = format_date_nice(due_date)
+    status_id = get_status_id(status)
+    
+    query = """
+    mutation CreateIssue($input: IssueCreateInput!) {
+      issueCreate(input: $input) {
+        success
+        issue {
+          id
+          identifier
+          title
+          url
+        }
+      }
+    }
+    """
+    
+    input_data = {
+        "teamId": LINEAR_TEAM_ID,
+        "projectId": LINEAR_PROJECT_ID,
+        "title": f"UCD Session: {nice_date} - volunteer needed",
+        "dueDate": due_date,
+        "description": f"## UCD Playback Session\n\n**Date:** Monday {nice_date}\n\n**Presenter:** _Volunteer needed!_\n\n**Theme:** TBC\n\n**Topic:** TBC\n\n---\n\n**To volunteer:** Assign yourself to this issue, pick a theme label, and update the title with your topic.",
+    }
+    
+    if status_id:
+        input_data["stateId"] = status_id
+    
+    result = linear_query(query, {"input": input_data})
+    return result.get("data", {}).get("issueCreate", {}).get("issue")
+
+
 def update_issue_status(issue_id: str, status_name: str):
     """Update an issue's status."""
     status_id = get_status_id(status_name)
@@ -204,13 +193,13 @@ def update_issue_status(issue_id: str, status_name: str):
         return
     
     query = """
-    mutation($id: String!, $input: IssueUpdateInput!) {
-      issueUpdate(id: $id, input: $input) {
+    mutation UpdateIssue($issueId: String!, $stateId: String!) {
+      issueUpdate(id: $issueId, input: { stateId: $stateId }) {
         success
       }
     }
     """
-    linear_query(query, {"id": issue_id, "input": {"stateId": status_id}})
+    linear_query(query, {"issueId": issue_id, "stateId": status_id})
 
 
 def ensure_six_future_sessions():
@@ -295,13 +284,13 @@ def announce_this_monday():
         topic = session.get("title", "").replace("UCD Session: ", "").replace(f"{this_monday_nice} - ", "")
         print(f"  ✓ Has presenter: {presenter}")
         post_to_slack(
-            f"**Hey everyone!** :sunny: Quick reminder: next Monday's session is {topic} being presented by {presenter}.\n\n"
+            f"*Hey everyone!* :sunny: Quick reminder: next Monday's session is {topic} being presented by {presenter}.\n\n"
             f"<{LINEAR_VIEW_URL}|See all upcoming sessions> and add your details to volunteer."
         )
     else:
         print(f"  ✗ No presenter!")
         post_to_slack(
-            f"**Hey everyone!** :heart_hands: This Monday's session ({this_monday_nice}) needs a presenter!\n\n"
+            f"*Hey everyone!* :heart_hands: This Monday's session ({this_monday_nice}) needs a presenter!\n\n"
             f"Please <{session['url']}|volunteer if you have time>. "
             f"You can also <{LINEAR_VIEW_URL}|see all upcoming sessions>."
         )

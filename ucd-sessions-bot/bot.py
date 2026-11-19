@@ -22,6 +22,9 @@ def linear_query(query: str, variables: dict = None):
         },
         json={"query": query, "variables": variables or {}},
     )
+    if not response.ok:
+        print(f"Linear API error: {response.status_code}")
+        print(f"Response: {response.text}")
     response.raise_for_status()
     return response.json()
 

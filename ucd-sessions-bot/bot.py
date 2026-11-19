@@ -56,7 +56,7 @@ def get_future_sessions():
     """Get all future session issues."""
     today = datetime.now().strftime("%Y-%m-%d")
     query = """
-    query($teamId: String!, $projectId: String!, $today: TimelessDate!) {
+    query($teamId: ID!, $projectId: ID!, $today: TimelessDate!) {
       issues(
         filter: {
           team: { id: { eq: $teamId } }
@@ -99,7 +99,7 @@ def get_future_sessions():
 def find_session_by_date(due_date: str):
     """Find a session issue by its due date."""
     query = """
-    query($teamId: String!, $projectId: String!, $dueDate: TimelessDate!) {
+    query($teamId: ID!, $projectId: ID!, $dueDate: TimelessDate!) {
       issues(
         filter: {
           team: { id: { eq: $teamId } }
@@ -171,7 +171,7 @@ def create_session(due_date: str, status: str = "Backlog"):
 def get_status_id(status_name: str) -> str:
     """Get the status ID for a given status name."""
     query = """
-    query($teamId: String!) {
+    query($teamId: ID!) {
       team(id: $teamId) {
         states {
           nodes {
@@ -198,13 +198,13 @@ def update_issue_status(issue_id: str, status_name: str):
         return
     
     query = """
-    mutation($id: String!, $stateId: String!) {
-      issueUpdate(id: $id, input: { stateId: $stateId }) {
+    mutation($id: String!, $input: IssueUpdateInput!) {
+      issueUpdate(id: $id, input: $input) {
         success
       }
     }
     """
-    linear_query(query, {"id": issue_id, "stateId": status_id})
+    linear_query(query, {"id": issue_id, "input": {"stateId": status_id}})
 
 
 def ensure_six_future_sessions():
